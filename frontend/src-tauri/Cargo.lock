@@ -2810,6 +2810,7 @@ name = "openjarvis-desktop"
 version = "1.0.1"
 dependencies = [
  "dispatch",
+ "glib",
  "keyring",
  "objc",
  "reqwest",
@@ -2827,6 +2828,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "toml_edit 0.25.13+spec-1.1.0",
+ "webkit2gtk",
 ]
 
 [[package]]

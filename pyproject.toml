@@ -32,6 +32,7 @@ dependencies = [
     "croniter>=2.0",
     "datasets>=4.5.0",
     "ddgs>=9.11.4",
+    "faster-whisper",
     "httpx>=0.27",
     "openai>=1.30",
     "nvidia-ml-py>=12.560.30",
@@ -229,7 +230,14 @@ git_describe_command = [
 fallback_version = "0.0.0+unknown"
 
 [tool.uv.sources]
-openjarvis-rust = { path = "rust/crates/openjarvis-python" }
+openjarvis-rust = { path = "rust/crates/openjarvis-python", editable = true }
+faster-whisper = { git = "https://github.com/SYSTRAN/faster-whisper", branch = "master" }
+
+#CPU only pytorch, nvidia cuda bundles by default, this turns it off.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.hatch.build.targets.sdist]
 # Tauri release bundles carry these executables; Python source distributions

@@ -14,6 +14,8 @@
     "build:tauri": "tsc -b && vite build --outDir dist",
     "preview": "vite preview",
     "tauri": "tauri",
+    "build": "tauri build",
+    "build:linux": "bash scripts/linuxdeploy-plugin-fix.sh && NO_STRIP=true tauri build",
     "test": "vitest run"
   },
   "dependencies": {

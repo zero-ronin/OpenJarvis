@@ -30,14 +30,25 @@ export function useSpeech() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const recorder = new MediaRecorder(stream);
+      // WebKitGTK (Tauri on Linux) does not support audio/webm;codecs=opus.
+      // Negotiate whatever the platform actually supports.
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg',
+        'audio/mp4',
+      ];
+      const mimeType = candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
+
+      const recorder = new MediaRecorder(stream,mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
-      recorder.start();
+      recorder.start(250);
       mediaRecorderRef.current = recorder;
       setState('recording');
     } catch (err) {

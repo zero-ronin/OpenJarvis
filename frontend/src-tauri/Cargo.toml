@@ -40,6 +40,8 @@ keyring = { version = "3", features = ["windows-native"] }
 # Blocking Secret Service backend (no internal async runtime, so it is safe to
 # call from the tokio-driven Tauri commands). Needs libdbus-1-dev at build time.
 keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+webkit2gtk = { version = "2", features = ["v2_40"] }
+glib = "0.18"
 
 [features]
 default = ["custom-protocol"]

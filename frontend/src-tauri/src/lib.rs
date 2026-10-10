@@ -29,6 +29,11 @@ const QWEN35_MODELS: &[(&str, f64, f64)] = &[
     ("qwen3.5:122b", 81.0, 96.0),
 ];
 
+#[cfg(target_os = "linux")]
+use webkit2gtk::{WebViewExt, SettingsExt, PermissionRequestExt};
+#[cfg(target_os = "linux")]
+use webkit2gtk::glib::prelude::*;
+
 /// Get total system RAM in GB.
 fn total_ram_gb() -> f64 {
     #[cfg(target_os = "macos")]
@@ -372,6 +377,36 @@ fn project_root_near_executable(exe: &std::path::Path) -> Option<std::path::Path
     }
 
     None
+}
+
+/// WebKitGTK on Linux ships with media-stream disabled and a stock
+/// permission-request handler that denies everything. Neither can be
+/// fixed from outside the embedding application. This opts in:
+///   - enables `enable-media-stream` on the webview settings
+///   - auto-allows ONLY UserMediaPermissionRequest (mic/camera)
+///   - leaves every other permission kind on the default deny
+#[cfg(target_os = "linux")]
+fn setup_linux_media_permissions(window: &tauri::WebviewWindow) {
+
+    let _ = window.with_webview(|webview| {
+        let wv = webview.inner();
+
+        // 1. Enable getUserMedia on the settings.
+        if let Some(settings) = wv.settings() {
+            settings.set_enable_media_stream(true);
+            settings.set_enable_mediasource(true);
+        }
+
+        // 2. Intercept permission requests. Allow ONLY mic/camera.
+        wv.connect_permission_request(|_, req| {
+            if req.is::<webkit2gtk::UserMediaPermissionRequest>() {
+                req.allow();
+                true // handled — don't fall through to default deny
+            } else {
+                false // let WebKitGTK's default handler deny it
+            }
+        });
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -2051,6 +2086,7 @@ async fn transcribe_audio(
         .text()
         .await
         .map_err(|e| format!("Invalid response: {}", e))?;
+
     if !status.is_success() {
         let detail = serde_json::from_str::<serde_json::Value>(&body)
             .ok()
@@ -3362,6 +3398,12 @@ pub fn run() {
                     _ => {}
                 })
                 .build(app)?;
+
+            // Linux media permissions
+            #[cfg(target_os = "linux")]
+            if let Some(window) = app.get_webview_window("main") {
+                setup_linux_media_permissions(&window);
+            }
 
             // Create native macOS overlay panel
             #[cfg(target_os = "macos")]

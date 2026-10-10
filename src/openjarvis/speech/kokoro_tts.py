@@ -171,6 +171,34 @@ class KokoroTTSBackend(TTSBackend):
             except Exception:  # pragma: no cover - third-party cleanup is best effort
                 pass
 
+    # Voice blending
+    @staticmethod
+    def _resolve_voice(pipeline: Any, voice_spec: str) -> Any:
+        """Resolve a voice spec to either a single ID or a blended tensor.
+
+        Accepts:
+            "af_heart"                                    -> single voice
+            "bf_alice:0.6,bf_isabella:0.4"                -> weighted blend
+
+        Returns a string (single) or a tensor (blend) ready for pipeline().
+        """
+        if ":" not in voice_spec and "," not in voice_spec:
+            return voice_spec
+
+        parts = [p.strip() for p in voice_spec.split(",") if p.strip()]
+        voices, weights = [], []
+        for part in parts:
+            name, _, weight = part.partition(":")
+            voices.append(name.strip())
+            weights.append(float(weight) if weight else 1.0)
+
+        tensors = [pipeline.load_voice(v) for v in voices]
+        total = sum(weights)
+        if total <= 0:
+            raise ValueError(f"Voice blend weights must sum > 0: {voice_spec!r}")
+        blended = sum(t * (w / total) for t, w in zip(tensors, weights))
+        return blended
+
     def close(self) -> None:
         """Release every cached pipeline and clear the cache."""
         with self._pipeline_lock:
@@ -195,7 +223,8 @@ class KokoroTTSBackend(TTSBackend):
         with self._pipeline_lock:
             pipeline = self._ensure_pipeline(lang_code)
             samples = []
-            for _, _, audio in pipeline(text, voice=voice_id, speed=speed):
+            resolved_voice = self._resolve_voice(pipeline, voice_id)            #voice blend
+            for _, _, audio in pipeline(text, voice=resolved_voice, speed=speed):
                 samples.append(audio)
 
         if not samples:
